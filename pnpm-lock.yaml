@@ -77,6 +77,9 @@ importers:
       react-dom:
         specifier: 19.1.0
         version: 19.1.0(react@19.1.0)
+      scoop:
+        specifier: ^0.0.2
+        version: 0.0.2
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
@@ -1513,6 +1516,9 @@ packages:
   scheduler@0.26.0:
     resolution: {integrity: sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA==}
 
+  scoop@0.0.2:
+    resolution: {integrity: sha512-epgEC/vmIad9sT20iSq5Lb4/OhncrlLNm2cjJzUKtCey68wYfjiNFE3bUNjAQwzragU8zyhQDaKRcQJMA/wClg==}
+
   semver@7.7.2:
     resolution: {integrity: sha512-RF0Fw+rO5AMf9MAyaRXI4AV0Ulj5lMHqVxxdSgiVbixSCXoEmmX/jk0CuJw4+3SqroYO9VoUh+HcuJivvtJemA==}
     engines: {node: '>=10'}
@@ -2748,6 +2754,8 @@ snapshots:
   resolve-pkg-maps@1.0.0: {}
 
   scheduler@0.26.0: {}
+
+  scoop@0.0.2: {}
 
   semver@7.7.2:
     optional: true
