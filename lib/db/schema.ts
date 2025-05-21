@@ -128,6 +128,33 @@ export type TeamDataWithMembers = Team & {
   })[];
 };
 
+export const campaigns = pgTable('campaigns', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id),
+  name: text('name').notNull(),
+  status: text('status').notNull().default('draft'),
+  template: text('template'),
+  settings: text('settings'),
+  processedCount: integer('processed_count').default(0),
+  totalCount: integer('total_count'),
+  errorMessage: text('error_message'),
+  scheduledAt: timestamp('scheduled_at'),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const campaignsRelations = relations(campaigns, ({ one }) => ({
+  user: one(users, {
+    fields: [campaigns.userId],
+    references: [users.id],
+  }),
+}));
+
+export type Campaign = typeof campaigns.$inferSelect;
+export type NewCampaign = typeof campaigns.$inferInsert;
+
 export enum ActivityType {
   SIGN_UP = 'SIGN_UP',
   SIGN_IN = 'SIGN_IN',

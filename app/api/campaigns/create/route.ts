@@ -1,12 +1,37 @@
-// app/api/campaigns/create/route.ts
-import { auth } from '@/auth';
-import { db } from '@/db';
-import { campaigns } from '@/db/schema';
-import { checkUsageLimit, incrementUsage } from '@/lib/usage';
+import { getSession } from '@/lib/auth/session';
+import { db } from '@/lib/db/drizzle';
+import { campaigns, users } from '@/lib/db/schema';
 import { nanoid } from 'nanoid';
+import { eq } from 'drizzle-orm';
+import type { InferSelectModel } from 'drizzle-orm';
+
+type Usage = {
+  used: number;
+  remaining: number;
+  limit: number;
+};
+
+async function checkUsageLimit(userId: string): Promise<Usage> {
+  // TODO: Implement actual usage check
+  return { used: 0, remaining: 1000, limit: 1000 };
+}
+
+async function incrementUsage(userId: string, count: number): Promise<void> {
+  // TODO: Implement actual usage increment
+  console.log(`Incrementing usage for user ${userId} by ${count}`);
+}
+
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      NEXT_PUBLIC_APP_URL?: string;
+      N8N_WEBHOOK_SECRET?: string;
+    }
+  }
+}
 
 export async function POST(req: Request) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user) {
     return Response.json({ error: 'Unauthorized.' }, { status: 401 });
   }
@@ -15,7 +40,8 @@ export async function POST(req: Request) {
   const { name, template, leads, settings } = await req.json();
   
   // Check usage limits
-  const usage = await checkUsageLimit(session.user.id);
+  const userId = String(session.user.id);
+  const usage = await checkUsageLimit(userId);
   if (usage.remaining < leads.length) {
     return Response.json({ 
       error: 'Usage limit exceeded',
@@ -28,16 +54,33 @@ export async function POST(req: Request) {
     const campaignId = nanoid();
     await db.insert(campaigns).values({
       id: campaignId,
-      userId: session.user.id,
+      userId: userId,
       name,
       status: 'pending',
-      settings: JSON.stringify(settings)
+      settings: JSON.stringify(settings),
+      scheduledAt: null,
+      startedAt: null,
+      completedAt: null,
+      errorMessage: null,
+      totalCount: Array.isArray(leads) ? leads.length : 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
     
-    // Get user subscription
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, session.user.id)
+    // Get user's team subscription info
+    const userWithTeam = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, Number(session.user.id)),
+      with: {
+        teamMembers: {
+          with: {
+            team: true
+          }
+        }
+      }
     });
+
+    // Get the first team's subscription status or default to 'free'
+    const subscriptionTier = userWithTeam?.teamMembers[0]?.team.planName || 'free';
     
     // Set callback URL for n8n to notify your app
     const callbackUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.com';
@@ -59,7 +102,7 @@ export async function POST(req: Request) {
           ...settings,
           callbackUrl
         },
-        subscription: user?.subscriptionTier || 'free'
+        subscription: subscriptionTier
       })
     });
     
@@ -68,13 +111,14 @@ export async function POST(req: Request) {
     }
     
     // Increment usage
-    await incrementUsage(session.user.id, leads.length);
+    const leadsCount = Array.isArray(leads) ? leads.length : 0;
+    await incrementUsage(userId, leadsCount);
     
     // Return success
     return Response.json({ 
       success: true,
       campaignId,
-      usage: await checkUsageLimit(session.user.id)
+      usage: await checkUsageLimit(userId)
     });
   } catch (error) {
     console.error('Campaign creation error:', error);
